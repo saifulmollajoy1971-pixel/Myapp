@@ -1,0 +1,133 @@
+<?php
+// PHP: Logging, Authentication, or Backup Data
+$logFile = 'signal_log.txt';
+$timestamp = date('Y-m-d H:i:s');
+
+// If HTTP API exists, load data
+// $apiUrl = 'http://72.60.110.156:3002/api'; // Uncomment if needed
+// $backupData = @file_get_contents($apiUrl);
+// if ($backupData) {
+//     file_put_contents($logFile, "[$timestamp] Backup: $backupData\n", FILE_APPEND);
+// }
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MR X Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{
+      height:100vh;
+      font-family:'Orbitron',sans-serif;
+      background: url("ChatGPT Image Jul 25, 2025, 04_49_17 AM.png") no-repeat center center fixed;
+      background-size: cover;
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      color:#fff;
+    }
+    .portal{width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(255,0,255,0.3),transparent 70%);box-shadow:0 0 80px rgba(255,0,255,0.7),inset 0 0 30px #ff00ff;display:flex;align-items:center;justify-content:center;animation:pulse 4s ease-in-out infinite;position:relative;z-index:10;}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+    .portal .text{font-size:60px;color:#fff;text-shadow:0 0 10px #ff00ff,0 0 25px #ff00ff;animation:flicker 1.5s infinite;}
+    @keyframes flicker{0%{opacity:1}25%{opacity:.7;transform:translateX(1px)}50%{opacity:1}75%{opacity:.6;transform:translateX(-1px)}100%{opacity:1}}
+    .glow-scan{position:absolute;width:310px;height:310px;border:2px dashed rgba(255,0,255,0.4);border-radius:50%;animation:rotate 12s linear infinite;z-index:5;}
+    @keyframes rotate{to{transform:rotate(360deg)}}
+    .contact{position:absolute;bottom:8%;left:50%;transform:translateX(-50%);padding:14px 38px;border-radius:40px;background:rgba(255,0,255,0.15);border:2px solid #ff00ff;color:#ff00ff;font-weight:bold;box-shadow:0 0 18px #ff00ff,inset 0 0 8px #ff00ff;transition:.3s;backdrop-filter:blur(5px);text-decoration:none;}
+    .contact:hover{background:rgba(255,0,255,0.35);transform:translateX(-50%) scale(1.1);}
+    .fireflies{position:absolute;inset:0;overflow:hidden;z-index:1;}
+    .firefly{position:absolute;width:3px;height:3px;background:#ff00ff;border-radius:50%;opacity:.7;animation:rise 8s linear infinite;}
+    @keyframes rise{0%{transform:translateY(0);opacity:.7;}100%{transform:translateY(-100vh);opacity:0;}}
+  </style>
+</head>
+<body>
+
+  <div class="glow-scan"></div>
+  <div class="portal">
+    <div id="crashValue" class="text">00</div>
+  </div>
+
+  <a href="https://t.me/Sqwehs" class="contact" target="_blank">Contact Us</a>
+  <div class="fireflies" id="fireflies"></div>
+
+  <script>
+    const container = document.getElementById('fireflies');
+    for(let i = 0; i < 80; i++){
+      const dot = document.createElement('div');
+      dot.className = 'firefly';
+      dot.style.left = Math.random() * 100 + '%';
+      dot.style.bottom = '-' + (Math.random() * 30 + 5) + 'px';
+      dot.style.animationDelay = Math.random() * 8 + 's';
+      dot.style.animationDuration = (4 + Math.random() * 6) + 's';
+      container.appendChild(dot);
+    }
+
+    const crashValueElement = document.getElementById('crashValue');
+    let ws;
+
+    function extractCrash(data) {
+      try {
+        const json = JSON.parse(data);
+        if (json.crashMultiplier !== undefined) {
+          return parseFloat(json.crashMultiplier).toFixed(2);
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    function updateDisplay(value) {
+      const num = parseFloat(value);
+      const display = num < 10 ? '0' + num.toFixed(2) : num.toFixed(2);
+      crashValueElement.textContent = display;
+    }
+
+    // Non-secure WebSocket (ws://)
+    function connectWebSocket() {
+      try {
+        // Connect using non-secure WebSocket (ws://)
+        ws = new WebSocket('ws://72.60.110.156:3002/');  // Using ws:// instead of wss://
+
+        ws.onopen = () => {
+          console.log('Connected via non-secure WebSocket (ws://)');
+          crashValueElement.textContent = '00';
+        };
+
+        ws.onmessage = (event) => {
+          const crash = extractCrash(event.data);
+          if (crash) {
+            updateDisplay(crash);
+            // Log to PHP server (optional)
+            fetch('log.php', {
+              method: 'POST',
+              body: JSON.stringify({signal: crash, time: new Date().toISOString()}),
+              headers: {'Content-Type': 'application/json'}
+            });
+          }
+        };
+
+        ws.onclose = () => {
+          console.log('Connection closed, attempting to reconnect...');
+          setTimeout(connectWebSocket, 3000); // Retry after 3 seconds
+        };
+
+        ws.onerror = () => {
+          console.log('WebSocket error, attempting to reconnect...');
+          setTimeout(connectWebSocket, 3000); // Retry after 3 seconds
+        };
+
+      } catch (err) {
+        console.log('Error while connecting to WebSocket:', err);
+        setTimeout(connectWebSocket, 3000); // Retry after 3 seconds
+      }
+    }
+
+    connectWebSocket(); // Start WebSocket connection
+  </script>
+
+</body>
+</html>
